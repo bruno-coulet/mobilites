@@ -7,7 +7,6 @@ Compétence  : C1 (Automatiser l'extraction de données depuis un service web)
 Auteur      : Bruno Coulet
 =============================================================================
 """
-
 import json
 import subprocess
 import os
@@ -20,11 +19,17 @@ from dotenv import load_dotenv
 # -------------------------------------------------------------------
 DATA_DIR = Path("data/trips")
 
+# Chargement des identifiants tels qu'ils étaient dans votre utils.py
+load_dotenv()
+USER_ID = os.getenv("USER_ID")
+PASSWORD = os.getenv("PASSWORD")
+PROXY = os.getenv("PROXY")
+
 def run_curl(cmd):
     """
     Exécute la commande curl. 
-    Pour contourner le proxy de l'entreprise 
-    avec la négociation transparente (--proxy-negotiate)
+    Justification technique (C1) : Indispensable pour contourner le proxy de l'entreprise 
+    avec la négociation transparente (--proxy-negotiate).
     """
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
@@ -37,86 +42,98 @@ def run_curl(cmd):
         print(f"Erreur cURL : {result.stderr}")
         return None
 
+
+def get_access_token():
+    """Récupère le token VOI via curl en passant par le wrapper JSON.
+
+    La commande utilise le même mécanisme de fallback proxy que les autres
+    requêtes pour fonctionner à la fois au bureau et hors du réseau d'entreprise.
+    """
+    token_url = "https://api.voiapp.io/v1/partner-apis/token"
+    cmd = [
+        "curl.exe",
+        # "-s",
+        "-x", PROXY,
+        "--proxy-negotiate",
+        "-u", ":",
+        "--ssl-no-revoke",
+        "--user", f"{USER_ID}:{PASSWORD}",
+        "-X", "POST",
+        "-H", "Content-Type: application/x-www-form-urlencoded",
+        "-H", "Content-Length: 29",
+        "-d", "grant_type=client_credentials",
+        token_url,
+        ]
+    
+    # Le parsing JSON et le fallback proxy sont centralisés dans run_curl_json().
+    data = run_curl_json(cmd)
+    return data["access_token"]
+
+
 def get_trips(token, zone_id=66, start_time=None, end_time=None):
     """
-    Récupère les trajets récents pour une zone donnée et les enregistre en JSON .
+    Récupère les trajets récents pour une zone donnée et les enregistre en JSON.
     """
-    # end_time par défaut = maintenant 
     if end_time is None:
         end_time = datetime.now(timezone.utc)
-    # start_time par défaut = 24h avant 
     if start_time is None:
         start_time = end_time - timedelta(hours=24)
 
-    # Conversion au format ISO attendu par l'API MDS 
     start_str = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
     end_str = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    url = f"https://api.voiapp.io/v1/partner-apis/mds/{zone_id}/trips?start_time={start_str}&end_time={end_str}"
 
-    url = f"https://api.voiapp.io/v1/partner-apis/mds/{zone_id}/trips?start_time={start_str}&end_time={end_str}" 
-
-    # Construction de la requête CURL 
     cmd = [
         "curl",
-        # "--proxy", "http://votre_proxy:port", # À décommenter si actif le jour J 
-        # "--proxy-negotiate", "-u", ":",       # Authentification Windows transparente 
-        "--ssl-no-revoke", 
-        "--location", url, 
-        "-H", f"Authorization: Bearer {token}", 
-        "-H", "Accept: application/vnd.mds+json;version=2.0" 
+        # "--proxy", PROXY,               # Décommentez si vous êtes sur le réseau d'entreprise
+        # "--proxy-negotiate", "-u", ":", # Décommentez si vous êtes sur le réseau d'entreprise
+        "--ssl-no-revoke",
+        "--location", url,
+        "-H", f"Authorization: Bearer {token}",
+        "-H", "Accept: application/vnd.mds+json;version=2.0"
     ]
 
     print(f"\n[API VOI] Extraction des trajets du {start_str} au {end_str}...")
     data = run_curl(cmd)
 
     if data:
-        # Création du dossier cible si inexistant 
         output_dir = DATA_DIR
         output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Sauvegarde 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = output_dir / f"trips_{timestamp}.json" 
+        output_file = output_dir / f"trips_{timestamp}.json"
         
-        with open(output_file, "w", encoding="utf-8") as f: 
-            json.dump(data, f, ensure_ascii=False, indent=2) 
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
             
-        print(f"✅ Données enregistrées dans {output_file}") 
+        print(f"✅ Données enregistrées dans {output_file}")
         
     return data
 
 def scan_latest_trips():
-    """Scanne le dossier data/trips pour trouver le fichier le plus récent"""
+    """Scanne le dossier data/trips pour trouver le fichier le plus récent."""
     if not DATA_DIR.exists():
         return None
-        
-    files = list(DATA_DIR.glob("trips_*.json")) 
+    files = list(DATA_DIR.glob("trips_*.json"))
     if not files:
         return None
-        
-    # Retourne le fichier avec la date de modification la plus récente
-    return max(files, key=lambda f: f.stat().st_mtime) 
+    return max(files, key=lambda f: f.stat().st_mtime)
 
-def raw_data_update(token, zone_id=66):
-    """
-    Orchestrateur : Met à jour de façon incrémentale les données
-    """
-    latest = scan_latest_trips() 
+def raw_data_update(zone_id=66):
+    """Orchestrateur : Génère le token puis met à jour de façon incrémentale."""
+    token = get_access_token()
+    if not token:
+        print("❌ Arrêt du pipeline : Impossible d'obtenir un token d'accès.")
+        return
+
+    latest = scan_latest_trips()
     if latest:
-        print(f"Dernier fichier détecté : {latest.name} ")
+        print(f"Dernier fichier détecté : {latest.name}")
         print("Mise à jour incrémentale sur les dernières 24h...")
     else:
         print("Aucun historique trouvé. Lancement d'une extraction initiale.")
 
-    # Déclenche l'extraction
-    get_trips(token=token, zone_id=zone_id) 
+    get_trips(token=token, zone_id=zone_id)
 
-if __name__ == "__main__": 
-    # Chargement du token depuis le fichier .env
-    load_dotenv()
-    VOI_TOKEN = os.getenv("VOI_TOKEN")
-
-    if not VOI_TOKEN:
-        print("Erreur : VOI_TOKEN est manquant dans le fichier .env")
-    else:
-        print("Démarrage du pipeline de collecte Web API")
-        raw_data_update(token=VOI_TOKEN) 
+if __name__ == "__main__":
+    print("🚀 Démarrage du pipeline de collecte Web API (Source 1)")
+    raw_data_update()
