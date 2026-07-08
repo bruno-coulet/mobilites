@@ -19,8 +19,11 @@ Cloner le dépôt et installez les dépendances dans un environnement virtuel :
 ```bash
 git clone https://github.com/bruno-coulet/mobilites.git
 cd mobilites
-uv venv
-uv pip install pandas duckdb sqlalchemy psycopg2-binary fastapi uvicorn playwright python-dotenv requests
+# créer l'environnemnt virtuel
+uv init
+# importer les dépendances
+uv add install pandas duckdb sqlalchemy psycopg2-binary fastapi uvicorn playwright python-dotenv requests
+# Installer le navigateur pour playwright
 uv run playwright install chromium
 ```
 >Note : Configurer votre fichier `.env` à la racine (voir `.env.example`) avec DATABASE_URL et les clés API.  
@@ -30,14 +33,14 @@ Vous pouvez tester le pipeline étape par étape :
 
 **Étape A :** Collecte des sources
 ```bash
-uv run scripts_collect/1_api_voi.py
-uv run scripts_collect/3_csv_navettes.py
-uv run scripts_collect/5_convert_to_parquet.py
+uv run 1_collect/1_api_voi.py
+uv run 1_collect/3_csv_navettes.py
+uv run 1_collect/5_convert_to_parquet.py
 ```
 
 **Étape B :** Agrégation, RGPD et Import PostgreSQL
 ```bash
-uv run scripts_agregation/6_agregation_et_import.py
+uv run 2_agregation/6_agregation_et_import.py
 ```
 **Étape C :** Lancement de l'API de Restitution L'API FastAPI se trouve à la racine du projet (main.py).
 ```bash
@@ -46,7 +49,7 @@ uv run uvicorn main:app --reload
 L'API et sa documentation Swagger sécurisée seront accessibles sur : http://localhost:8000/docs.   
 
 Architecture du Code (Les 5 Sources)
-Le pipeline automatise l'extraction depuis 5 systèmes de natures différentes (dossier scripts_collect/) :
+Le pipeline automatise l'extraction depuis 5 systèmes de natures différentes (dossier 1_collect/) :
 
 
 |Script|Type de Source|Description|Format / Techno|
@@ -58,7 +61,7 @@ Le pipeline automatise l'extraction depuis 5 systèmes de natures différentes (
 |5_convert_to_parquet.py|Big Data|Historique massifs de trajets.|.parquet (DuckDB)|
 
 ## Agrégation et Conformité RGPD
-Le script central scripts_agregation/6_agregation_et_import.py est le cœur du réacteur :   
+Le script central 2_agregation/6_agregation_et_import.py est le cœur du réacteur :   
 
 **Jointure Spatiale :** Croisement de toutes les sources sur une clé commune : le code IRIS.   
 

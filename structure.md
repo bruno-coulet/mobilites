@@ -9,15 +9,13 @@
 ├── main.py
 ├── README.md
 ├── scripts_agregation
-│   ├── 6_agregation_et_import.py
-│   ├── add_iris.py
-│   └── process_data.py
+│   └── 6_agregation_et_import.py
 ├── scripts_collect
 │   ├── 1_api_voi.py
 │   ├── 2_scrap_waryme.py
 │   ├── 3_csv_navettes.py
 │   ├── 4_sql_referentiel.py
 │   └── 5_convert_to_parquet.py
-└── structure.md
+└── structure.txt
 
-4 directories, 17 files
+4 directories, 15 files

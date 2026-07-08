@@ -1,16 +1,19 @@
+"""
+=============================================================================
+Projet      : Observatoire Global de la Mobilité (Marseille)
+Livrable    : Bloc E1 - Script 1/6
+Rôle        : Extraction automatisée de données depuis une API Web (VOI MDS).
+Compétence  : C1 (Automatiser l'extraction de données depuis un service web)
+Auteur      : Bruno Coulet
+=============================================================================
+"""
+
 import json
 import subprocess
 import os
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
-
-
-"""
-Utilisation de `subprocess.run(cmd)` et de `curl` dans ce script (au lieu de la librairie standard `requests`)
-Les contraintes réseau de l'entreprise (proxy avec négociation NTLM/Kerberos) bloque les requêtes standard.  
-Passer par un appel système `curl` avec `--proxy-negotiate` permet de surmonter une infrastructure technique complexe pour automatiser l'extraction
-"""
 
 # -------------------------------------------------------------------
 # Configuration des chemins locaux pour l'Observatoire E1

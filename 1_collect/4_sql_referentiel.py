@@ -1,3 +1,14 @@
+"""
+=============================================================================
+Projet      : Observatoire Global de la Mobilité (Marseille)
+Livrable    : Bloc E1 - Script 4/6
+Rôle        : Extraction du référentiel cartographique (IRIS) depuis PostgreSQL.
+Compétences : C1 (Automatiser l'extraction depuis une Base de Données)
+              C2 (Développer des requêtes de type SQL optimisées)
+Auteur      : Bruno Coulet
+=============================================================================
+"""
+
 import os
 import pandas as pd
 from sqlalchemy import create_engine

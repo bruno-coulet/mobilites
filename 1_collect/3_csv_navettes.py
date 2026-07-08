@@ -1,3 +1,13 @@
+"""
+=============================================================================
+Projet      : Observatoire Global de la Mobilité (Marseille)
+Livrable    : Bloc E1 - Script 3/6
+Rôle        : Ingestion et première lecture de données historiques tabulaires.
+Compétence  : C1 (Automatiser l'extraction de données depuis un fichier CSV)
+Auteur      : Bruno Coulet
+=============================================================================
+"""
+
 import pandas as pd
 from pathlib import Path
 

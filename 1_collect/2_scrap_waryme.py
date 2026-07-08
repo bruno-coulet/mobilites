@@ -1,3 +1,14 @@
+"""
+=============================================================================
+Projet      : Observatoire Global de la Mobilité (Marseille)
+Livrable    : Bloc E1 - Script 2/6
+Rôle        : Extraction automatisée de données via Web Scraping (Waryme).
+              Utilisation de Playwright pour contourner les restrictions réseau.
+Compétence  : C1 (Automatiser l'extraction de données via scraping)
+Auteur      : Bruno Coulet
+=============================================================================
+"""
+
 import asyncio
 import os
 from datetime import date, timedelta

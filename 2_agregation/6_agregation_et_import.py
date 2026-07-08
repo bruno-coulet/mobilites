@@ -1,3 +1,16 @@
+"""
+=============================================================================
+Projet      : Observatoire Global de la Mobilité (Marseille)
+Livrable    : Bloc E1 - Script 6/6
+Rôle        : Cœur du pipeline de données. Nettoyage, homogénéisation temporelle,
+              jointure spatiale (IRIS), anonymisation RGPD (Privacy by Design),
+              et insertion en base de données relationnelle (Modèle en étoile).
+Compétences : C3 (Développer des règles d'agrégation et de nettoyage)
+              C4 (Modélisation, script d'import et respect du RGPD)
+Auteur      : Bruno Coulet
+=============================================================================
+"""
+
 import os
 import pandas as pd
 from sqlalchemy import create_engine

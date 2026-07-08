@@ -1,3 +1,15 @@
+"""
+=============================================================================
+Projet      : Observatoire Global de la Mobilité (Marseille)
+Livrable    : Bloc E1 - Script 5/6
+Rôle        : Extraction et requêtage analytique sur des données massives.
+              Utilisation du format colonnaire Parquet et du moteur DuckDB.
+Compétences : C1 (Automatiser l'extraction depuis un système Big Data)
+              C2 (Requêter des données avec optimisation Predicate Pushdown)
+Auteur      : Bruno Coulet
+=============================================================================
+"""
+
 import duckdb
 import pandas as pd
 from pathlib import Path

@@ -1,3 +1,15 @@
+"""
+=============================================================================
+Projet      : Observatoire Global de la Mobilité (Marseille)
+Livrable    : Bloc E1 - Restitution
+Rôle        : API REST sécurisée mettant à disposition les données consolidées.
+              Implémentation de l'architecture REST, d'une documentation OpenAPI,
+              et d'une sécurisation par X-API-Key (Standards OWASP).
+Compétence  : C5 (Développer une API mettant à disposition le jeu de données)
+Auteur      : Bruno Coulet
+=============================================================================
+"""
+
 import os
 from fastapi import FastAPI, Depends, HTTPException, Security, status
 from fastapi.security.api_key import APIKeyHeader
