@@ -1,21 +1,18 @@
 .
-├── data
-│   ├── consolidation_maritime.xlsx
-│   ├── maritime_clean.csv
-│   ├── trips_2026_01__01_00h_31_23h.json
-│   ├── trips_2026_01.parquet
-│   ├── trips_2026_02.parquet
-│   └── trips_2026_03.parquet
-├── main.py
-├── README.md
-├── scripts_agregation
-│   └── 6_agregation_et_import.py
-├── scripts_collect
+├── 1_collect
 │   ├── 1_api_voi.py
 │   ├── 2_scrap_waryme.py
 │   ├── 3_csv_navettes.py
 │   ├── 4_sql_referentiel.py
-│   └── 5_convert_to_parquet.py
-└── structure.txt
+│   ├── 5_convert_to_parquet.py
+│   └── utils.py
+├── 2_agregation
+│   └── 6_agregation_et_import.py
+├── README.md
+├── main.py
+├── pyproject.toml
+├── structure.md
+├── utils.py:Zone.Identifier
+└── uv.lock
 
-4 directories, 15 files
+3 directories, 13 files

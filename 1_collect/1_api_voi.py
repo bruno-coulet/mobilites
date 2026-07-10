@@ -6,108 +6,78 @@ Rôle        : Extraction automatisée de données depuis une API Web (VOI MDS).
 Compétence  : C1 (Automatiser l'extraction de données depuis un service web)
 Auteur      : Bruno Coulet
 =============================================================================
+
+Pour ce projet d'Observatoire, j'ai refactorisé mon script d'origine.
+En entreprise, je devais utiliser un wrappeur complexe avec subprocess et curl pour contourner un proxy très strict
+via de la négociation transparente.
+Pour cette version locale, j'ai modernisé et épuré le code en m'appuyant sur les standards de l'industrie,
+à savoir la librairie Python requests, tout en conservant mon module métier utils.py pour centraliser
+la gestion du cache de mon jeton d'authentification.
+
 """
-import json
-import subprocess
+
 import os
+import requests
+import json
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
+
+
+# Import de la fonction d'authentification centralisée (sans proxy)
+from utils import get_access_token
 
 # -------------------------------------------------------------------
 # Configuration des chemins locaux pour l'Observatoire E1
 # -------------------------------------------------------------------
 DATA_DIR = Path("data/trips")
 
-# Chargement des identifiants tels qu'ils étaient dans votre utils.py
-load_dotenv()
-USER_ID = os.getenv("USER_ID")
-PASSWORD = os.getenv("PASSWORD")
-PROXY = os.getenv("PROXY")
-
-def run_curl(cmd):
+def get_trips(token, zone_id=66, end_time=None):
     """
-    Exécute la commande curl. 
-    Justification technique (C1) : Indispensable pour contourner le proxy de l'entreprise 
-    avec la négociation transparente (--proxy-negotiate).
+    Extraction propre via API REST.
+    L'API VOI ne renvoie qu'une heure de données à la fois et n'attend que end_time !
     """
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError:
-            print("Erreur : Impossible de décoder le JSON.")
-            return None
-    else:
-        print(f"Erreur cURL : {result.stderr}")
-        return None
 
-
-def get_access_token():
-    """Récupère le token VOI via curl en passant par le wrapper JSON.
-
-    La commande utilise le même mécanisme de fallback proxy que les autres
-    requêtes pour fonctionner à la fois au bureau et hors du réseau d'entreprise.
-    """
-    token_url = "https://api.voiapp.io/v1/partner-apis/token"
-    cmd = [
-        "curl.exe",
-        # "-s",
-        "-x", PROXY,
-        "--proxy-negotiate",
-        "-u", ":",
-        "--ssl-no-revoke",
-        "--user", f"{USER_ID}:{PASSWORD}",
-        "-X", "POST",
-        "-H", "Content-Type: application/x-www-form-urlencoded",
-        "-H", "Content-Length: 29",
-        "-d", "grant_type=client_credentials",
-        token_url,
-        ]
-    
-    # Le parsing JSON et le fallback proxy sont centralisés dans run_curl_json().
-    data = run_curl_json(cmd)
-    return data["access_token"]
-
-
-def get_trips(token, zone_id=66, start_time=None, end_time=None):
-    """
-    Récupère les trajets récents pour une zone donnée et les enregistre en JSON.
-    """
     if end_time is None:
-        end_time = datetime.now(timezone.utc)
-    if start_time is None:
-        start_time = end_time - timedelta(hours=24)
+        # On recule d'une heure pour être sûr que la tranche horaire est clôturée côté serveur
+        end_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
-    start_str = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_str = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-    url = f"https://api.voiapp.io/v1/partner-apis/mds/{zone_id}/trips?start_time={start_str}&end_time={end_str}"
+    # Format YYYY-MM-DDTHH exigé par VOI
+    end_str = end_time.strftime("%Y-%m-%dT%H")
 
-    cmd = [
-        "curl",
-        # "--proxy", PROXY,               # Décommentez si vous êtes sur le réseau d'entreprise
-        # "--proxy-negotiate", "-u", ":", # Décommentez si vous êtes sur le réseau d'entreprise
-        "--ssl-no-revoke",
-        "--location", url,
-        "-H", f"Authorization: Bearer {token}",
-        "-H", "Accept: application/vnd.mds+json;version=2.0"
-    ]
+    # La vraie URL stricte avec uniquement end_time
+    url = f"https://api.voiapp.io/v1/partner-apis/mds/{zone_id}/trips?end_time={end_str}"
 
-    print(f"\n[API VOI] Extraction des trajets du {start_str} au {end_str}...")
-    data = run_curl(cmd)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.mds+json;version=2.0"
+    }
 
-    if data:
+    print(f"\n[API VOI] Extraction de la dernière heure de trajets (Fin : {end_str})...")
+
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+
+        if response.status_code != 200:
+            print(f"❌ Erreur API ({response.status_code}) : {response.text}")
+
+        response.raise_for_status()
+        data = response.json()
+
         output_dir = DATA_DIR
         output_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_file = output_dir / f"trips_{timestamp}.json"
-        
+
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-            
-        print(f"✅ Données enregistrées dans {output_file}")
-        
-    return data
+
+        print(f"Données enregistrées dans {output_file}")
+        return data
+
+    except Exception as e:
+        print(f"Erreur lors de l'extraction des trajets : {e}")
+        return None
 
 def scan_latest_trips():
     """Scanne le dossier data/trips pour trouver le fichier le plus récent."""
@@ -119,21 +89,22 @@ def scan_latest_trips():
     return max(files, key=lambda f: f.stat().st_mtime)
 
 def raw_data_update(zone_id=66):
-    """Orchestrateur : Génère le token puis met à jour de façon incrémentale."""
+    """Orchestrateur : Génère le token puis extrait les données."""
     token = get_access_token()
     if not token:
-        print("❌ Arrêt du pipeline : Impossible d'obtenir un token d'accès.")
+        print("Arrêt du pipeline : Impossible d'obtenir un token d'accès.")
         return
 
     latest = scan_latest_trips()
     if latest:
         print(f"Dernier fichier détecté : {latest.name}")
-        print("Mise à jour incrémentale sur les dernières 24h...")
+        print("Extraction du dernier bloc horaire disponible...")
     else:
-        print("Aucun historique trouvé. Lancement d'une extraction initiale.")
+        print("Aucun historique trouvé. Lancement d'une extraction initiale horaire.")
 
     get_trips(token=token, zone_id=zone_id)
 
+# C'est ce bloc qui manquait pour que le script s'exécute réellement !
 if __name__ == "__main__":
-    print("🚀 Démarrage du pipeline de collecte Web API (Source 1)")
+    print("Démarrage du pipeline de collecte Web API (Source 1)")
     raw_data_update()
