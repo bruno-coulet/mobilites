@@ -55,54 +55,54 @@ L'API et sa documentation Swagger sécurisée seront accessibles sur : http://lo
 ## Architecture du Code
 
 ```mermaid
-flowchart TD
-    subgraph Collecte ["1_collect/ (Les 5 Sources)"]
-        direction TB
-        S1("1_api_voi.py\n(Web API / JSON)")
-        S2("2_scrap_waryme.py\n(Scraping / HTML)")
-        S3("3_csv_navettes.py\n(Fichier / CSV)")
-        S4("4_duckdb_query.py\n(Big Data / Parquet)")
-        S5("5_sql_zones_iris.py\n(Base de données / SQLite)")
-    end
-
-    subgraph Agregation ["2_agregation/"]
-        A{"6_agregation_et_import.py\n- Homogénéisation temporelle\n- Jointure spatiale (IRIS)\n- Anonymisation (RGPD)"}
-    end
-
-    subgraph Stockage ["Data Warehouse"]
-        DB[("PostgreSQL cible\n(Modèle en étoile)")]
-    end
-
-    subgraph Restitution ["Exposition des données"]
-        API("main.py\n(API FastAPI)")
-        Clients(("Clients /\nDashboards"))
-    end
-
-    %% Flux de la collecte vers l'agrégation
-    S1 ---> A
-    S2 ---> A
-    S3 ---> A
-    S4 ---> A
-    S5 ---> A
-
-    %% Flux de l'agrégation vers le stockage
-    A ===>|Import automatisé| DB
-
-    %% Flux du stockage vers l'API puis vers les clients
-
+flowchart TB
+ subgraph Collecte["1_collect/ (Les 5 Sources)"]
+        S1("1_api_voi.py<br>(Web API / JSON)")
+        S2("2_scrap_waryme.py<br>(Scraping / HTML)")
+        S3("3_csv_navettes.py<br>(Fichier / CSV)")
+        S4("4_duckdb_query.py<br>(Big Data / Parquet)")
+        S5("5_sql_zones_iris.py<br>(Base de données / SQLite)")
+  end
+ subgraph Agregation["2_agregation/"]
+        A{"6_agregation_et_import.py<br>- Homogénéisation temporelle<br>- Jointure spatiale (IRIS)<br>- Anonymisation (RGPD)"}
+  end
+ subgraph Stockage["Data Warehouse"]
+        DB[("PostgreSQL cible<br>(Modèle en étoile)")]
+  end
+ subgraph Restitution["Exposition des données"]
+        API("main.py<br>(API FastAPI)")
+        Clients(("Clients /<br>Dashboards"))
+  end
+    S1 --> A
+    S2 --> A
+    S3 --> A
+    S4 --> A
+    S5 --> A
+    A -- Import automatisé --> DB
     DB -. Requêtes SQL .-> API
-    API == Endpoints sécurisés<br>(X-API-Key) ==> Clients
+    API == "Endpoints sécurisés<br>(X-API-Key)" ==> Clients
 
-    %% Styles pour rendre le schéma professionnel
-    classDef source fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
-    classDef process fill:#fff3e0,stroke:#e65100,stroke-width:2px;
-    classDef database fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef api fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px;
-
-    class S1,S2,S3,S4,S5 source;
-    class A process;
-    class DB database;
-    class API api;
+     S1:::source
+     S2:::source
+     S3:::source
+     S4:::source
+     S5:::source
+     A:::process
+     DB:::database
+     API:::api
+    classDef source fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef process fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef database fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef api fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    style S1 color:#000000
+    style S2 color:#000000
+    style S3 color:#000000
+    style S4 color:#000000
+    style S5 color:#000000
+    style A color:#000000
+    style DB color:#000000
+    style API color:#000000
+    style Clients color:#000000,fill:#ffffff
 ```
 
 Le pipeline automatise l'extraction depuis 5 systèmes de natures différentes (sous dossier `1_collect/`) :
