@@ -7,16 +7,23 @@ Compétence  : C1 (Automatiser l'extraction de données depuis un service web)
 Auteur      : Bruno Coulet
 =============================================================================
 
-Pour ce projet d'Observatoire, j'ai refactorisé mon script d'origine.
-En entreprise, je devais utiliser un wrappeur complexe avec subprocess et curl pour contourner un proxy très strict
-via de la négociation transparente.
-Pour cette version locale, j'ai modernisé et épuré le code en m'appuyant sur les standards de l'industrie,
-à savoir la librairie Python requests, tout en conservant mon module métier utils.py pour centraliser
-la gestion du cache de mon jeton d'authentification.
+Contexte et adaptation pour le RNCP :
+Pour ce projet d'Observatoire, le script d'origine utilisé en entreprise a été
+refactorisé. L'ancienne version impliquait un wrapper complexe via `subprocess`
+et `curl` pour contourner un proxy très strict.
+Pour cette version, le code a été modernisé avec le standard `requests`.
+L'authentification (OAuth2) est centralisée dans le module `utils.py`.
+L'extraction interroge dynamiquement le paramètre `end_time` (H-1) afin de
+garantir la récupération d'une tranche horaire consolidée côté serveur.
 
+Input       : API VOI MDS Provider
+Output      : DataFrame Pandas en mémoire (ou fichier JSON local)
+
+Exécution   : uv run 1_collect/1_api_voi.py
+PROCHAINE ÉTAPE : uv run 1_collect/2_scrap_waryme.py
 """
 
-import os
+
 import requests
 import json
 from pathlib import Path
@@ -104,7 +111,7 @@ def raw_data_update(zone_id=66):
 
     get_trips(token=token, zone_id=zone_id)
 
-# C'est ce bloc qui manquait pour que le script s'exécute réellement !
+
 if __name__ == "__main__":
     print("Démarrage du pipeline de collecte Web API (Source 1)")
     raw_data_update()

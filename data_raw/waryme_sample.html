@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Waryme - Interface des Alertes RTM</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #0b4b7c; color: white; }
+    </style>
+</head>
+<body>
+    <h2>Tableau de bord des alertes de sécurité (Extranet RTM)</h2>
+    <p>Historique récent des signalements sur le réseau.</p>
+
+    <!-- C'est ce tableau précis (id="alertsTable") que notre script va venir parser -->
+    <table id="alertsTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Zone IRIS</th>
+                <th>nom_emetteur</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>2026-07-10 08:15</td>
+                <td>Colis Suspect</td>
+                <td>132010101</td>
+                <td>Agent_007</td>
+            </tr>
+            <tr>
+                <td>2026-07-10 09:30</td>
+                <td>Agression</td>
+                <td>132060204</td>
+                <td>Agent_042</td>
+            </tr>
+            <tr>
+                <td>2026-07-10 10:45</td>
+                <td>Malaise Voyageur</td>
+                <td>132020502</td>
+                <td>Agent_103</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

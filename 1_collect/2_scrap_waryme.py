@@ -2,98 +2,73 @@
 =============================================================================
 Projet      : Observatoire Global de la Mobilité (Marseille)
 Livrable    : Bloc E1 - Script 2/6
-Rôle        : Extraction automatisée de données via Web Scraping (Waryme).
-              Utilisation de Playwright pour contourner les restrictions réseau.
-Compétence  : C1 (Automatiser l'extraction de données via scraping)
+Rôle        : Extraction par Web Scraping et parsing de DOM HTML.
+Compétences : C1 (Téléchargement et parsing de données utiles depuis l'HTML)
+              C4 (Anonymisation des données personnelles pour le RGPD)
 Auteur      : Bruno Coulet
 =============================================================================
+
+Contexte et adaptation pour le RNCP :
+En entreprise, l'absence d'API et le pare-feu m'ont poussé à développer
+un bot d'automatisation (RPA) naviguant sur Waryme pour exporter des CSV.
+Pour cette évaluation (validant la capacité à "parser du DOM HTML"), le
+script a été adapté : il isole le code HTML de la page des résultats et
+utilise Playwright pour extraire la donnée brute directement depuis
+les balises (<table>, <tr>, <td>).
+De plus, la colonne 'nom_emetteur' est supprimée en mémoire vive (RAM)
+avant toute sauvegarde, appliquant le principe de Privacy by Design (RGPD).
+
+Input       : data/data_raw/waryme_sample.html
+Output      : data/waryme_alerts_clean.csv
+
+Exécution   : uv run 1_collect/2_scrap_waryme.py
+PROCHAINE ÉTAPE : uv run 1_collect/3_csv_navettes.py
 """
 
-import asyncio
+
+from playwright.sync_api import sync_playwright
 import os
-from datetime import date, timedelta
 from pathlib import Path
-from dotenv import load_dotenv
-from playwright.async_api import async_playwright
+import pandas as pd
 
-# -------------------------------------------------------------------
-# Configuration des chemins locaux pour l'Observatoire E1
-# -------------------------------------------------------------------
-DATA_DIR = Path("data/waryme")
+def mock_scrap_waryme():
+    print("Démarrage du pipeline de Web Scraping (Source 2) - Mode Local Mock")
 
-async def login(page, user_id, password, url):
-    """Effectue la connexion à l'interface Waryme."""
-    print("Ouverture de la page de connexion...")
-    await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-    
-    # Remplissage du formulaire
-    await page.wait_for_selector("input[formcontrolname='login']", state="visible", timeout=30000)
-    await page.fill("input[formcontrolname='login']", user_id)
-    await page.fill("input[formcontrolname='password']", password)
-    
-    # Clic et attente de la connexion
-    await page.click("button[type='submit']")
-    await page.wait_for_load_state("networkidle")
-    print("Connexion réussie.")
+    # Fichier source HTML local simulant la page Waryme (extrait via Playwright en entreprise)
+    html_path = f"file://{Path(os.getcwd()) / 'data_raw' / 'waryme_sample.html'}"
 
-async def apply_filters(page, start_date: date, end_date: date):
-    """Accède aux filtres et injecte les dates pour cibler la semaine précédente."""
-    print(f"Application des filtres du {start_date.strftime('%d/%m/%Y')} au {end_date.strftime('%d/%m/%Y')}...")
-    # La logique précise d'interaction avec le calendrier Waryme est exécutée ici
-    # (simplifiée pour l'exemple de la soutenance)
-    await asyncio.sleep(1) # Simulation de l'interaction UI
 
-async def export_csv(page, start_date: date, end_date: date, download_dir: Path):
-    """Déclenche l'export automatique et sauvegarde le fichier CSV."""
-    print("Déclenchement de l'export CSV...")
-    
-    # Capture de l'événement de téléchargement natif du navigateur
-    async with page.expect_download(timeout=60000) as download_info:
-        # Clic sur le bouton d'export de l'interface
-        await page.click("button:has-text('Exporter')") 
-        download = await download_info.value
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-    # Création du dossier cible et sauvegarde
-    download_dir.mkdir(parents=True, exist_ok=True)
-    file_name = f"alertes_waryme_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.csv"
-    file_path = download_dir / file_name
-    
-    await download.save_as(file_path)
-    print(f"Scraping terminé. Fichier sauvegardé dans : {file_path}")
+        print("Ouverture de la page locale simulée...")
+        page.goto(html_path)
 
-async def main():
-    # Chargement des variables d'environnement
-    load_dotenv()
-    URL = os.getenv("WARYME_URL")
-    ID = os.getenv("WARYME_ID")
-    PASSWORD = os.getenv("WARYME_PASSWORD")
+        print("Extraction du tableau des alertes (Parsing HTML)...")
+        # Cible toutes les lignes du corps du tableau
+        rows = page.locator("#alertsTable tbody tr").all()
 
-    if not all([URL, ID, PASSWORD]):
-        print("Erreur : Identifiants WARYME manquants dans le fichier .env")
-        return
+        data = []
+        for row in rows:
+            # Pour chaque ligne, extrait le texte de chaque cellule <td>
+            cells = row.locator("td").all_inner_texts()
+            data.append(cells)
 
-    # Calcul des dates (semaine précédente)
-    today = date.today()
-    end_date = today - timedelta(days=today.weekday() + 1)
-    start_date = end_date - timedelta(days=6)
+        browser.close()
 
-    print("Démarrage du pipeline de Web Scraping (Source 2)")
-    
-    # Lancement de Playwright
-    # Mettre headless=False permet de voir le navigateur s'ouvrir pendant la démo
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(accept_downloads=True)
-        page = await context.new_page()
+        # 1. Conversion en DataFrame
+        df = pd.DataFrame(data, columns=["Date", "Type", "Zone", "nom_emetteur"])
 
-        try:
-            await login(page, ID, PASSWORD, URL)
-            await apply_filters(page, start_date, end_date)
-            await export_csv(page, start_date, end_date, DATA_DIR)
-        except Exception as e:
-            print(f"Erreur lors du scraping : {e}")
-        finally:
-            await browser.close()
+        # 2. Application de la règle RGPD (Privacy by Design - Compétence C4)
+        print("Application du filtre RGPD (Suppression des données personnelles)...")
+        df = df.drop(columns=['nom_emetteur'])
+
+        # 3. Sauvegarde
+        output_path = Path("data/waryme_alerts_clean.csv")
+        output_path.parent.mkdir(exist_ok=True)
+        df.to_csv(output_path, index=False)
+        print(f"✅ Scraping et nettoyage réussis ! Données enregistrées dans {output_path}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    mock_scrap_waryme()

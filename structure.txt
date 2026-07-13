@@ -1,0 +1,33 @@
+.
+├── 1_collect
+│   ├── 1_api_voi.py
+│   ├── 2_scrap_waryme.py
+│   ├── 3_csv_navettes.py
+│   ├── 4_duckdb_query.py
+│   ├── 5_sql_zones_iris.py
+│   ├── __pycache__
+│   │   └── utils.cpython-312.pyc
+│   └── utils.py
+├── 2_agregation
+│   └── 6_agregation_et_import.py
+├── README.md
+├── __pycache__
+│   └── main.cpython-312.pyc
+├── data
+│   ├── maritime_clean.csv
+│   ├── mobilite_db.sqlite
+│   ├── trips
+│   │   ├── trips_20260710_102442.json
+│   │   └── trips_sample.parquet
+│   └── waryme_alerts_clean.csv
+├── data_raw
+│   └── waryme_sample.html
+├── main.py
+├── pyproject.toml
+├── setup
+│   ├── create_mock_db.py
+│   └── json_to_parquet.py
+├── structure.txt
+└── uv.lock
+
+9 directories, 22 files
