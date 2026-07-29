@@ -93,53 +93,51 @@ uv run uvicorn main:app --reload --port 8001
 
 ```mermaid
 flowchart TB
- subgraph Collecte["1_collect/ (Les 5 Sources)"]
+    subgraph Collecte ["1_collect/ (Les 5 Sources)"]
         S1("1_api_voi.py<br>(Web API / JSON)")
         S2("2_scrap_waryme.py<br>(Scraping / HTML)")
         S3("3_csv_navettes.py<br>(Fichier / CSV)")
         S4("4_duckdb_query.py<br>(Big Data / Parquet)")
         S5("5_sql_zones_iris.py<br>(Base de données / SQLite)")
-  end
- subgraph Agregation["2_agregation/"]
+    end
+
+    subgraph Agregation ["2_agregation/"]
         A{"6_agregation_et_import.py<br>- Homogénéisation temporelle<br>- Jointure spatiale (IRIS)<br>- Anonymisation (RGPD)"}
-  end
- subgraph Stockage["Data Warehouse"]
+    end
+
+    subgraph Stockage ["Data Warehouse"]
         DB[("PostgreSQL cible<br>(Modèle en étoile)")]
-  end
- subgraph Restitution["Exposition des données"]
+    end
+
+    subgraph Restitution ["Exposition des données"]
         API("main.py<br>(API FastAPI)")
         Clients(("Clients /<br>Dashboards"))
-  end
+    end
+
     S1 --> A
     S2 --> A
     S3 --> A
     S4 --> A
     S5 --> A
-    A -- Import automatisé --> DB
-    DB -. Requêtes SQL .-> API
-    API == "Endpoints sécurisés<br>(X-API-Key)" ==> Clients
+    A -->|"Import automatisé"| DB
+    DB -.->|"Requêtes SQL"| API
+    API ==>|"Endpoints sécurisés<br>(X-API-Key)"| Clients
 
-     S1:::source
-     S2:::source
-     S3:::source
-     S4:::source
-     S5:::source
-     A:::process
-     DB:::database
-     API:::api
-    classDef source fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    classDef process fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef database fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    classDef api fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    style S1 color:#000000
-    style S2 color:#000000
-    style S3 color:#000000
-    style S4 color:#000000
-    style S5 color:#000000
-    style A color:#000000
-    style DB color:#000000
-    style API color:#000000
-    style Clients color:#000000,fill:#ffffff
+    S1:::source
+    S2:::source
+    S3:::source
+    S4:::source
+    S5:::source
+    A:::process
+    DB:::database
+    API:::api
+    Clients:::client
+
+    classDef source fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#000000
+    classDef process fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef database fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000000
+    classDef api fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#000000
+    classDef client fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000
 ```
 
 Le pipeline automatise l'extraction depuis 5 systèmes de natures différentes (sous dossier `1_collect/`) :
