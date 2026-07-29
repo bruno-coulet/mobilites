@@ -24,9 +24,12 @@ PROCHAINE ÉTAPE : uv run 2_agregation/6_agregation_et_import.py
 """
 
 import os
+
 import pandas as pd
-from sqlalchemy import create_engine
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError, ProgrammingError
+
 
 def extract_iris_referential():
     """
@@ -52,8 +55,8 @@ def extract_iris_referential():
         engine = create_engine(db_url)
 
         # Requête SQL optimisée (C2) :
-        # On ne sélectionne QUE les colonnes nécessaires (pas de SELECT *)
-        # et on filtre en amont sur la ville pour économiser la RAM.
+        # ne sélectionne QUE les colonnes nécessaires (pas de SELECT *)
+        # filtre en amont sur la ville pour économiser la RAM.
         query = """
             SELECT code_iris, nom_iris, geometrie
             FROM zones_iris
@@ -66,8 +69,7 @@ def extract_iris_referential():
         df_iris = pd.read_sql(query, engine)
 
         print(f"Extraction réussie : {len(df_iris)} zones IRIS marseillaises récupérées.")
-
-        # Aperçu pour la démonstration au jury
+        # Aperçu des données pour validation (C1)
         print("-" * 40)
         print("Aperçu des 3 premières lignes :")
         print(df_iris.head(3))
@@ -75,11 +77,24 @@ def extract_iris_referential():
 
         return df_iris
 
-    except Exception as e:
-        print(f"Erreur lors de l'extraction SQL : {e}")
-        print("Avez-vous bien lancé votre conteneur PostgreSQL en local et créé la table 'zones_iris' ?")
+    # Erreur d'infrastructure : BDD injoignable, mauvais mot de passe, conteneur éteint
+    except OperationalError as e:
+        print(f"Erreur de connexion à l'instance PostgreSQL : {e}")
+        print("Avez-vous bien lancé votre conteneur PostgreSQL en local et vérifié vos identifiants ?")
         return None
 
+    # Erreur logique : La requête est invalide ou la table/colonne n'existe pas
+    except ProgrammingError as e:
+        print(f"Erreur SQL lors de l'exécution de la requête : {e}")
+        print("La table 'zones_iris' a-t-elle été créée et peuplée dans la base de données ?")
+        return None
+
+    # Erreur de dépendance : Il manque le driver (ex: psycopg2) pour lire l'URL
+    except ImportError as e:
+        print(f"Erreur de driver de base de données : {e}")
+        print("Assurez-vous que le paquet 'psycopg2' ou 'psycopg2-binary' est installé.")
+        return None
+    
 if __name__ == "__main__":
     print("Démarrage du pipeline de collecte Base de Données (Source 4)")
 

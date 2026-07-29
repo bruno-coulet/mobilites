@@ -5,9 +5,11 @@ uv run json_to_parquet.py
 """
 
 
-import pandas as pd
 import json
 from pathlib import Path
+
+import pandas as pd
+
 
 def convert_my_json():
 

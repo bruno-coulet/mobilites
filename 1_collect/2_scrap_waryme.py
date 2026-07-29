@@ -26,10 +26,12 @@ PROCHAINE ÉTAPE : uv run 1_collect/3_csv_navettes.py
 """
 
 
-from playwright.sync_api import sync_playwright
 import os
 from pathlib import Path
+
 import pandas as pd
+from playwright.sync_api import sync_playwright
+
 
 def mock_scrap_waryme():
     print("Démarrage du pipeline de Web Scraping (Source 2) - Mode Local Mock")
@@ -68,7 +70,7 @@ def mock_scrap_waryme():
         output_path = Path("data/waryme_alerts_clean.csv")
         output_path.parent.mkdir(exist_ok=True)
         df.to_csv(output_path, index=False)
-        print(f"✅ Scraping et nettoyage réussis ! Données enregistrées dans {output_path}")
+        print(f"Scraping et nettoyage réussis ! Données enregistrées dans {output_path}")
 
 if __name__ == "__main__":
     mock_scrap_waryme()

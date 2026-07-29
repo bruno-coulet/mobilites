@@ -23,8 +23,9 @@ Sorties:
 """
 
 import os
+from datetime import UTC, datetime
+
 import requests
-from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 # Chargement des identifiants (plus besoin du proxy pour la soutenance)
@@ -36,45 +37,6 @@ PASSWORD = os.getenv("PASSWORD")
 _cached_token = None
 _cached_token_time = None
 
-# def get_access_token(max_age_minutes=14):
-#     """
-#     Récupère le token VOI via requêtes HTTP natives (requests).
-#     Implémente une logique de cache pour ne pas sur-solliciter l'API.
-#     """
-#     global _cached_token, _cached_token_time
-#     now = datetime.now(timezone.utc)
-
-#     # 1. Vérification du cache
-#     if _cached_token and _cached_token_time:
-#         if (now - _cached_token_time).total_seconds() < max_age_minutes * 60:
-#             return _cached_token
-
-#     # 2. Génération d'un nouveau token si le cache est vide ou expiré
-#     if not USER_ID or not PASSWORD:
-#         print("❌ Erreur : USER_ID ou PASSWORD manquant dans le .env")
-#         return None
-
-#     print("\n[Authentification] Négociation d'un nouveau token VOI...")
-#     token_url = "https://api.voiapp.io/v1/partner-apis/token"
-
-#     try:
-#         # L'API VOI attend un grant_type client_credentials
-#         payload = {"client_id": USER_ID, "client_secret": PASSWORD, "grant_type": "client_credentials"}
-#         response = requests.post(token_url, data=payload, timeout=10)
-#         response.raise_for_status()
-
-#         token = response.json().get("access_token")
-
-#         # Mise en cache
-#         _cached_token = token
-#         _cached_token_time = datetime.now(timezone.utc)
-
-#         print("✅ Token d'accès généré avec succès.")
-#         return token
-
-#     except Exception as e:
-#         print(f"❌ Échec de l'authentification : {e}")
-#         return None
 
 
 def get_access_token(max_age_minutes=14):
@@ -83,16 +45,15 @@ def get_access_token(max_age_minutes=14):
     Implémente une logique de cache pour ne pas sur-solliciter l'API.
     """
     global _cached_token, _cached_token_time
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # 1. Vérification du cache
-    if _cached_token and _cached_token_time:
-        if (now - _cached_token_time).total_seconds() < max_age_minutes * 60:
-            return _cached_token
+    if _cached_token and _cached_token_time and (now - _cached_token_time).total_seconds() < max_age_minutes * 60:
+        return _cached_token
 
     # 2. Génération d'un nouveau token
     if not USER_ID or not PASSWORD:
-        print("❌ Erreur : USER_ID ou PASSWORD manquant dans le .env")
+        print("Erreur : USER_ID ou PASSWORD manquant dans le .env")
         return None
 
     print("\n[Authentification] Négociation d'un nouveau token VOI...")
@@ -112,7 +73,7 @@ def get_access_token(max_age_minutes=14):
 
         # En cas d'erreur 400, on affiche le message précis de l'API pour faciliter le débug
         if response.status_code != 200:
-            print(f"❌ Erreur API : {response.text}")
+            print(f"Erreur API : {response.text}")
 
         response.raise_for_status()
 
@@ -120,11 +81,17 @@ def get_access_token(max_age_minutes=14):
 
         # Mise en cache
         _cached_token = token
-        _cached_token_time = datetime.now(timezone.utc)
+        _cached_token_time = datetime.now(UTC)
 
-        print("✅ Token d'accès généré avec succès.")
+        print("Token d'accès généré avec succès.")
         return token
 
-    except Exception as e:
-        print(f"❌ Échec de l'authentification : {e}")
+    # Capture toutes les erreurs de la bibliothèque requests (timeout, refus de connexion, erreurs HTTP 4xx/5xx...)
+    except requests.exceptions.RequestException as e:
+        print(f"Erreur réseau ou d'authentification avec l'API VOI : {e}")
+        return None
+
+    # Capture l'erreur si la réponse n'est pas du JSON (ex: proxy d'entreprise qui bloque la requête et renvoie du HTML)
+    except ValueError as e:
+        print(f"Erreur de format : La réponse n'est pas un JSON valide : {e}")
         return None

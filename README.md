@@ -1,20 +1,23 @@
 # Observatoire de la Mobilité et de la Sécurité (Marseille)
 
 ## Contexte du projet (Livrable E1)
-Socle technique d'ingénierie de données (Data Engineering) pour la création d'un "Observatoire de la Mobilité" à Marseille.
+Socle technique d'ingénierie de données pour la création d'un **Observatoire de la Mobilité** à Marseille.
 
-L'objectif est d'agréger des données hétérogènes (trottinettes VOI, navettes maritimes, alertes de sécurité RTM) afin de les consolider dans un **entrepôt de données unifié** (modèle en étoile) et de les mettre à disposition via une **API REST sécurisée**.
+L'objectif est d'agréger des données hétérogènes
+- trottinettes VOI
+- navettes maritimes
+- alertes de sécurité RTM
 
----
+afin de les consolider dans un **entrepôt de données unifié** (modèle en étoile) et de les mettre à disposition via une **API REST sécurisée**.
+
+
 
 ## Quickstart (Guide de Lancement Rapide)
 
-### 1. Prérequis
-* Python 3.12+
-* `uv` (Gestionnaire de paquets)
-* Base de données locale (SQLite) générée via le script d'amorçage `setup/create_mock_db.py`.
-
-### 2. Installation
+### A) Prérequis et Configuration
+* Python 3.12+ et `uv` (Gestionnaire de paquets) installés.
+* Configurer le fichier `.env` à la racine (voir `.env.example`) avec `DATABASE_URL=sqlite:///data/mobilite_db.sqlite` et les clés API.
+### Installation
 Cloner le dépôt et installez les dépendances dans un environnement virtuel :
 ```bash
 git clone https://github.com/bruno-coulet/mobilites.git
@@ -25,31 +28,65 @@ uv init
 uv add pandas duckdb sqlalchemy psycopg2-binary fastapi uvicorn playwright python-dotenv requests pyarrow
 # Installer le navigateur pour playwright
 uv run playwright install chromium
-# Amorcer la base de données spatiale locale (Zones IRIS)
+```
+
+
+Les commandes ci-dessous doivent être exécutées depuis la racine du projet (`mobilites/`) :
+
+
+### B) Création de la base de données locale
+Initialiser la base de données locale ``SQLite``
+Elle sert de référentiel géographique (zones IRIS).
+
+```bash
 uv run setup/create_mock_db.py
 ```
->Note : Configurer votre fichier `.env` à la racine (voir `.env.example`) avec `DATABASE_URL=sqlite:///data/mobilite_db.sqlite` et les clés API.
+Vérifier que le fichier ``mobilite_db.sqlite`` a bien été créé dans le dossier ``data/``
 
+### C) Collecte des données (Extraction)
+Ces scripts constituent la première étape de l'ETL (Extract). Ils se connectent aux différentes sources (API, Web, Big Data) pour récupérer la donnée fraîche et la stocker dans ``data/``.
 
-### 3. Exécution du Pipeline de Données
-Vous pouvez tester le pipeline étape par étape :
-Étape A : Collecte des 5 sources (Mode Démonstration)
-```bash
+On peut les lancer individuellement :
+```python
 uv run 1_collect/1_api_voi.py
 uv run 1_collect/2_scrap_waryme.py
 uv run 1_collect/3_csv_navettes.py
 uv run 1_collect/4_duckdb_query.py
 uv run 1_collect/5_sql_zones_iris.py
 ```
-Étape B : Agrégation, RGPD et Import
-```bash
-uv run 2_agregation/6_agregation_et_import.py
+
+### D) Traitement, Agrégation et Import (RGPD)
+C'est le cœur du traitement de données, ce script :
+- fusionne toutes les sources
+- applique l'anonymisation pour le RGPD (suppression des noms en mémoire vive)
+- importe les données propres dans le modèle en étoile de la base de données.
+
+```python
+uv run python 2_agregation/6_agregation_et_import.py
 ```
-Étape C : Lancement de l'API de Restitution L'API FastAPI se trouve à la racine du projet (main.py).
+
+### E) Lancement de l'API de Restitution
+Une fois la base de données remplie
+On peut lancer le serveur web FastAPI.
+Celui-ci exposera les données via des endpoints sécurisés, sans faire aucun calcul lourd.
+```python
+uv run python main.py
+```
+
+L'API et sa documentation Swagger interactive (sécurisée par ``X-API-Key``) seront alors accessibles sur : http://localhost:8000/docs
+
+
 ```bash
 uv run uvicorn main:app --reload --port 8001
 ```
-L'API et sa documentation Swagger sécurisée seront accessibles sur : http://localhost:8001/docs.
+
+
+
+---
+
+
+
+
 
 
 ## Architecture du Code

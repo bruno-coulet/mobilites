@@ -20,8 +20,9 @@ Exécution   : uv run 1_collect/3_csv_navettes.py
 PROCHAINE ÉTAPE : uv run 1_collect/4_duckdb_query.py
 """
 
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 # -------------------------------------------------------------------
 # Configuration des chemins locaux pour l'Observatoire E1
@@ -59,8 +60,24 @@ def extract_csv_data(file_path: Path):
 
         return df
 
-    except Exception as e:
-        print(f"Erreur lors de la lecture du fichier CSV : {e}")
+    # Le CSV est trouvé mais il est totalement vide
+    except pd.errors.EmptyDataError:
+        print(f"Erreur : Le fichier {file_path.name} est vide. Aucune colonne à parser.")
+        return None
+
+    # Le CSV est malformé (ex: une ligne a 3 colonnes, la suivante en a 5)
+    except pd.errors.ParserError as e:
+        print(f"Erreur de structure dans le CSV {file_path.name} : {e}")
+        return None
+
+    # Problème d'encodage (très fréquent sur Windows avec les CSV venant d'Excel en ANSI/cp1252)
+    except UnicodeDecodeError:
+        print(f"Erreur d'encodage : {file_path.name} n'est pas en UTF-8 standard.")
+        return None
+
+    # Problème système (ex: fichier ouvert dans un autre programme bloquant la lecture, manque de droits)
+    except OSError as e:
+        print(f"Erreur d'accès système au fichier {file_path.name} : {e}")
         return None
 
 if __name__ == "__main__":
@@ -70,4 +87,4 @@ if __name__ == "__main__":
     df_navettes = extract_csv_data(DATA_FILE)
 
     if df_navettes is not None:
-        print(f"Les données des navettes maritimes sont prêtes pour l'agrégation finale.")
+        print("Les données des navettes maritimes sont prêtes pour l'agrégation finale.")

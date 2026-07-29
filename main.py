@@ -10,11 +10,18 @@ Auteur      : Bruno Coulet
 =============================================================================
 """
 
+import logging
 import os
-from fastapi import FastAPI, Depends, HTTPException, Security, status
+
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Security, status
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
+from sqlalchemy.exc import SQLAlchemyError
+
+#  Instanciation du logger dédié à ce module (à placer sous les imports)
+# __name__ prendra automatiquement le nom de ton fichier (ex: 'main', 'api.routers.trips')
+logger = logging.getLogger(__name__)
 
 # -------------------------------------------------------------------
 # Configuration et Sécurité (Validation C5 - OWASP)
@@ -23,8 +30,8 @@ load_dotenv()
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
-# Clé secrète attendue (à définir dans votre .env, ex: MOBILITE_API_KEY=mon_secret_123)
-EXPECTED_API_KEY = os.getenv("MOBILITE_API_KEY", "cle_demo_soutenance")
+# Clé secrète attendue (à définir dans .env, ex: MOBILITE_API_KEY=mon_secret_123)
+API_KEY = os.getenv("MOBILITE_API_KEY", "cle_demo_soutenance")
 
 # Configuration de la base de données cible (celle remplie à l'étape 6)
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin@localhost:5432/mobilite_db")
@@ -41,10 +48,10 @@ app = FastAPI(
 
 async def get_api_key(api_key_header: str = Security(api_key_header)):
     """
-    Middleware d'authentification. 
+    Middleware d'authentification.
     Protège l'accès aux données consolidées de la collectivité.
     """
-    if api_key_header == EXPECTED_API_KEY:
+    if api_key_header == API_KEY:
         return api_key_header
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -67,13 +74,21 @@ def get_trips(limit: int = 50, api_key: str = Depends(get_api_key)):
         LEFT JOIN dim_iris i ON t.zone_iris_start_code = i.code_iris
         LIMIT :limit
     """)
-    
+
     try:
         with engine.connect() as conn:
             result = conn.execute(query, {"limit": limit}).mappings().all()
             return {"status": "success", "data": [dict(row) for row in result]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur base de données : {str(e)}")
+    # Capture uniquement les erreurs liées à la base de données (connexion, syntaxe SQL, etc.)
+    except SQLAlchemyError as e:
+        # 1. On trace la vraie erreur côté serveur pour le débogage
+        logger.error(f"Erreur SQLAlchemy sur /trips : {e}")
+
+        # 2. On renvoie un message générique et sécurisé au client
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur interne du serveur lors de l'accès aux données."
+        )
 
 @app.get("/api/v1/mobility/alerts/{code_iris}", tags=["Sécurité"])
 def get_alerts_by_zone(code_iris: str, api_key: str = Depends(get_api_key)):
@@ -86,7 +101,7 @@ def get_alerts_by_zone(code_iris: str, api_key: str = Depends(get_api_key)):
         WHERE code_iris = :code_iris
         GROUP BY type_incident
     """)
-    
+
     try:
         with engine.connect() as conn:
             result = conn.execute(query, {"code_iris": code_iris}).mappings().all()
@@ -94,8 +109,17 @@ def get_alerts_by_zone(code_iris: str, api_key: str = Depends(get_api_key)):
                 "zone_iris": code_iris,
                 "statistiques_securite": [dict(row) for row in result]
             }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur base de données : {str(e)}")
+
+    # Capture spécifique de l'erreur base de données
+    except SQLAlchemyError as e:
+        # Trace sécurisée côté serveur avec le logger local
+        logger.error(f"Erreur SQLAlchemy sur /alerts/{code_iris} : {e}")
+
+        # Message générique et sécurisé côté client
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur interne du serveur lors de la récupération des alertes de sécurité."
+        )
 
 @app.get("/health", tags=["Supervision"])
 def health_check():

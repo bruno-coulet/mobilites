@@ -23,9 +23,9 @@ Exécution   : uv run 1_collect/4_duckdb_query.py
 PROCHAINE ÉTAPE : uv run 1_collect/5_sql_zones_iris.py
 """
 
-import duckdb
-import pandas as pd
 from pathlib import Path
+
+import duckdb
 
 # -------------------------------------------------------------------
 # Configuration des chemins locaux pour l'Observatoire E1
@@ -55,7 +55,7 @@ def extract_bigdata_parquet():
         # 2. Projection stricte (seulement 4 colonnes sur les dizaines disponibles)
         #    pour limiter les I/O disque (gros avantage du format colonnaire).
         # 3. Filtrage WHERE pour ne charger que la donnée utile en RAM.
-        query = f"""
+        query = """
             SELECT
                 trip_id,
                 start_time,
@@ -80,9 +80,26 @@ def extract_bigdata_parquet():
 
         return df_trips
 
-    except Exception as e:
-        print(f"Erreur lors de l'extraction Big Data : {e}")
+    # Problèmes de schéma (ex: une colonne demandée dans le SELECT n'existe pas dans le Parquet)
+    except duckdb.BinderException as e:
+        print(f"Erreur de schéma : Colonne introuvable dans les fichiers Parquet : {e}")
         return None
+
+    # Problèmes d'I/O (fichiers Parquet corrompus ou format invalide)
+    except duckdb.IOException as e:
+        print(f"Erreur de lecture : Fichiers Parquet inaccessibles ou corrompus : {e}")
+        return None
+
+    # Toute autre erreur native de DuckDB (erreur de syntaxe SQL, problème interne du moteur)
+    except duckdb.Error as e:
+        print(f"Erreur d'exécution DuckDB : {e}")
+        return None
+
+    # Limite matérielle (le DataFrame résultant est trop gros pour la RAM)
+    except MemoryError:
+        print("Erreur de mémoire : Le résultat filtré reste trop volumineux pour la RAM disponible.")
+        return None
+
     finally:
         # Fermeture propre de la connexion
         if 'con' in locals():

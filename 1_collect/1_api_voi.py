@@ -24,12 +24,11 @@ PROCHAINE ÉTAPE : uv run 1_collect/2_scrap_waryme.py
 """
 
 
-import requests
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from dotenv import load_dotenv
 
+import requests
 
 # Import de la fonction d'authentification centralisée (sans proxy)
 from utils import get_access_token
@@ -41,13 +40,13 @@ DATA_DIR = Path("data/trips")
 
 def get_trips(token, zone_id=66, end_time=None):
     """
-    Extraction propre via API REST.
-    L'API VOI ne renvoie qu'une heure de données à la fois et n'attend que end_time !
+    Extraction via API REST.
+    L'API VOI ne renvoie qu'une heure de données à la fois et n'attend que end_time
     """
 
     if end_time is None:
         # On recule d'une heure pour être sûr que la tranche horaire est clôturée côté serveur
-        end_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        end_time = datetime.now(UTC) - timedelta(hours=1)
 
     # Format YYYY-MM-DDTHH exigé par VOI
     end_str = end_time.strftime("%Y-%m-%dT%H")
@@ -66,14 +65,14 @@ def get_trips(token, zone_id=66, end_time=None):
         response = requests.get(url, headers=headers, timeout=15)
 
         if response.status_code != 200:
-            print(f"❌ Erreur API ({response.status_code}) : {response.text}")
+            print(f"Erreur API ({response.status_code}) : {response.text}")
 
         response.raise_for_status()
         data = response.json()
 
         output_dir = DATA_DIR
         output_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         output_file = output_dir / f"trips_{timestamp}.json"
 
         with open(output_file, "w", encoding="utf-8") as f:
@@ -82,8 +81,19 @@ def get_trips(token, zone_id=66, end_time=None):
         print(f"Données enregistrées dans {output_file}")
         return data
 
-    except Exception as e:
-        print(f"Erreur lors de l'extraction des trajets : {e}")
+    # Capture toutes les erreurs liées à la bibliothèque 'requests' (timeout, erreur HTTP, pas de connexion...)
+    except requests.exceptions.RequestException as e:
+        print(f"Erreur réseau/API lors de l'extraction des trajets : {e}")
+        return None
+
+    # Capture les erreurs si l'API ne renvoie pas du JSON valide
+    except ValueError as e:
+        print(f"Erreur : L'API n'a pas renvoyé un format JSON valide : {e}")
+        return None
+
+    # Capture les erreurs liées au système de fichiers (droits d'écriture, disque plein...)
+    except OSError as e:
+        print(f"Erreur système lors de la sauvegarde du fichier : {e}")
         return None
 
 def scan_latest_trips():
