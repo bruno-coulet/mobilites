@@ -16,7 +16,13 @@ afin de les consolider dans un **entrepôt de données unifié** (modèle en ét
 
 ### A) Prérequis et Configuration
 * Python 3.12+ et `uv` (Gestionnaire de paquets) installés.
-* Configurer le fichier `.env` à la racine (voir `.env.example`) avec `DATABASE_URL=sqlite:///data/mobilite_db.sqlite` et les clés API.
+
+
+* Configurer le fichier `.env` à la racine (voir `.env.example`) en y renseignant :
+  * `DATABASE_URL=sqlite:///data/mobilite_db.sqlite`
+  * `MOBILITE_API_KEY=votre_cle_secrete` (Inventez une clé pour protéger l'accès local à votre API)
+  * Les identifiants de connexion aux services externes (Waryme, API VOI).
+
 ### Installation
 Cloner le dépôt et installez les dépendances dans un environnement virtuel :
 ```bash
@@ -73,7 +79,7 @@ Celui-ci exposera les données via des endpoints sécurisés, sans faire aucun c
 uv run python main.py
 ```
 
-L'API et sa documentation Swagger interactive (sécurisée par ``X-API-Key``) seront alors accessibles sur : http://localhost:8000/docs
+L'API et sa documentation Swagger interactive (sécurisée par ``X-API-Key``) seront alors accessibles sur : http://localhost:8001/docs
 
 
 ```bash
@@ -81,19 +87,12 @@ uv run uvicorn main:app --reload --port 8001
 ```
 
 
-
 ---
-
-
-
-
 
 
 ## Architecture du Code
 
 ![Architecture mobilités](img/mobilites_archi.png)
-
-
 
 
 Le pipeline automatise l'extraction depuis 5 systèmes de natures différentes (sous dossier `1_collect/`) :
@@ -120,6 +119,17 @@ Le script central `2_agregation/6_agregation_et_import.py` fait office de pipeli
 Les données sont exposées via `main.py` (FastAPI).
 **Sécurisation :** Protection de tous les endpoints par une authentification `X-API-Key` (Standard OWASP).
 **Documentation :** Interface interactive OpenAPI (Swagger).
+
+**Test interactif :** Pour exécuter des requêtes depuis l'interface Swagger (`http://localhost:8001/docs`), cliquez sur le bouton **Authorize** et renseignez la valeur de votre `MOBILITE_API_KEY` définie dans le fichier `.env`. Le cadenas se fermera, confirmant que l'en-tête `X-API-Key` sera bien injecté dans vos requêtes.
+
+
+#### Qualité du Code (Linter)
+Afin de garantir la propreté, la maintenabilité et la conformité du code avec les standards Python (PEP 8), le code est vérifié et formaté à l'aide du linter **Ruff**.
+
+Pour lancer l'analyse de code localement à tout moment, lancer la commande suivante dans un terminal :
+`uv run ruff check`
+
+*(L'utilisation de cet outil s'inscrit dans les bonnes pratiques de développement, préparant ainsi le terrain pour l'automatisation des tests et l'intégration continue).*
 
 
 
