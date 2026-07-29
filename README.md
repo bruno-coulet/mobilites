@@ -20,7 +20,7 @@ afin de les consolider dans un **entrepôt de données unifié** (modèle en ét
 
 * Configurer le fichier `.env` à la racine (voir `.env.example`) en y renseignant :
   * `DATABASE_URL=sqlite:///data/mobilite_db.sqlite`
-  * `MOBILITE_API_KEY=votre_cle_secrete` (Inventez une clé pour protéger l'accès local à votre API)
+  * `MOBILITE_API_KEY=votre_cle_secrete` (Inventer une clé pour protéger l'accès local à votre API)
   * Les identifiants de connexion aux services externes (Waryme, API VOI).
 
 ### Installation
@@ -73,7 +73,7 @@ uv run python 2_agregation/6_agregation_et_import.py
 
 ### E) Lancement de l'API de Restitution
 Une fois la base de données remplie
-On peut lancer le serveur web FastAPI.
+On peut lancer le serveur web FastAPI.<br>
 Celui-ci exposera les données via des endpoints sécurisés, sans faire aucun calcul lourd.
 ```python
 uv run python main.py
@@ -116,11 +116,11 @@ Le script central `2_agregation/6_agregation_et_import.py` fait office de pipeli
 
 
 ## Restitution (API REST Sécurisée)
-Les données sont exposées via `main.py` (FastAPI).
-**Sécurisation :** Protection de tous les endpoints par une authentification `X-API-Key` (Standard OWASP).
+Les données sont exposées via `main.py` (FastAPI).<br>
+**Sécurisation :** Protection de tous les endpoints par une authentification `X-API-Key` (Standard OWASP).<br>
 **Documentation :** Interface interactive OpenAPI (Swagger).
 
-**Test interactif :** Pour exécuter des requêtes depuis l'interface Swagger (`http://localhost:8001/docs`), cliquez sur le bouton **Authorize** et renseignez la valeur de votre `MOBILITE_API_KEY` définie dans le fichier `.env`. Le cadenas se fermera, confirmant que l'en-tête `X-API-Key` sera bien injecté dans vos requêtes.
+**Test interactif :** Pour exécuter des requêtes depuis l'interface Swagger (`http://localhost:8001/docs`), cliquer sur le bouton **Authorize** et renseigner la valeur de `MOBILITE_API_KEY` définie dans le fichier `.env`. Le cadenas se fermera, confirmant que l'en-tête `X-API-Key` sera bien injecté dans les requêtes.
 
 
 #### Qualité du Code (Linter)
